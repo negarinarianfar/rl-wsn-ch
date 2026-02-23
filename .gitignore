@@ -1,0 +1,22 @@
+# Virtual Environment
+.venv/
+
+# PyCharm
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# Results
+results/logs/
+results/figures/
+results/tables/
+
+# Mac
+.DS_Store
