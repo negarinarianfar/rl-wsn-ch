@@ -17,6 +17,9 @@ __pycache__/
 results/logs/
 results/figures/
 results/tables/
+__pycache__/
+.venv/
 
 # Mac
 .DS_Store
+
