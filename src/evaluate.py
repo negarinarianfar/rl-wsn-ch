@@ -1,4 +1,5 @@
 # src/evaluate.py
+import csv
 from pathlib import Path
 from typing import Dict, Any, List
 import numpy as np
@@ -101,7 +102,22 @@ def main():
         rounds = metric_or_na(agg, "rounds_mean")
         print(f"{method:<10} | {fnd:<5} | {hnd:<5} | {lnd:<5} | {rounds:<6}")
 
+    table_dir = repo_root / "results" / "tables"
+    table_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = table_dir / "final_results.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Method", "FND", "HND", "LND", "Rounds"])
+        for method, agg in rows:
+            writer.writerow([
+                method,
+                metric_or_na(agg, "FND_mean"),
+                metric_or_na(agg, "HND_mean"),
+                metric_or_na(agg, "LND_mean"),
+                metric_or_na(agg, "rounds_mean"),
+            ])
+    print(f"\nSaved CSV table to: {csv_path}")
+
 
 if __name__ == "__main__":
     main()
-
