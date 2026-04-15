@@ -205,7 +205,7 @@ class WSNEnv:
 
         # termination
         dead_ratio = 1.0 - (float(self.alive.sum()) / float(self.cfg.n_nodes))
-        done = dead_ratio >= self.cfg.dead_ratio_terminate or (not self.alive.any())
+        done = not self.alive.any()
 
         reward = self.compute_reward(consumed)
         next_state = self.extract_state()
