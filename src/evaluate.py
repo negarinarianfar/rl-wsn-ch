@@ -61,7 +61,8 @@ def main():
     area_diag = float(np.hypot(cfg.area_w, cfg.area_h))
     agent = QLearningAgent(qcfg=qcfg, n_nodes=cfg.n_nodes, init_energy=cfg.init_energy, area_diag=area_diag)
 
-    q_table_path = Path("results/logs/q_table.json")
+    repo_root = Path(__file__).resolve().parents[1]
+    q_table_path = repo_root / "results" / "logs" / "q_table.json"
     if q_table_path.exists():
         load_agent(agent, str(q_table_path))
     else:
@@ -73,6 +74,32 @@ def main():
     print("Random:", agg_random)
     print("ECHP:", agg_echp)
     print("RL:", agg_rl)
+
+    def metric_or_na(agg: Dict[str, Any], key: str) -> str:
+        val = agg.get(key)
+        if val is None:
+            return "N/A"
+        try:
+            if np.isnan(val):
+                return "N/A"
+        except TypeError:
+            pass
+        return f"{float(val):.1f}"
+
+    print("\n===== FINAL TABLE =====")
+    print(f"{'Method':<10} | {'FND':<5} | {'HND':<5} | {'LND':<5} | {'Rounds':<6}")
+    print("-" * 45)
+    rows = [
+        ("Random", agg_random),
+        ("ECHP", agg_echp),
+        ("RL", agg_rl),
+    ]
+    for method, agg in rows:
+        fnd = metric_or_na(agg, "FND_mean")
+        hnd = metric_or_na(agg, "HND_mean")
+        lnd = metric_or_na(agg, "LND_mean")
+        rounds = metric_or_na(agg, "rounds_mean")
+        print(f"{method:<10} | {fnd:<5} | {hnd:<5} | {lnd:<5} | {rounds:<6}")
 
 
 if __name__ == "__main__":
