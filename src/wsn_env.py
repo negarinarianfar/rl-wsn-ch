@@ -16,7 +16,7 @@ class EnvConfig:
     topk_candidates: int
 
     # termination
-    dead_ratio_terminate: float = 0.8  # episode ends when 80% are dead
+    dead_ratio_terminate: float = 1.0  # episode ends when all nodes are dead
 
 
 def _dist(a: np.ndarray, b: np.ndarray) -> float:
@@ -108,46 +108,54 @@ class WSNEnv:
             self.alive[node] = False
 
     def execute_round(self, ch: int, deputy: int):
-        kbits = self.cfg.packet_bits
+        packet_bits = self.cfg.packet_bits
         total_consumed = 0.0
+        n_member_packets_rx = 0
 
         # 1) members -> CH (all alive except CH and deputy)
         for i in range(self.cfg.n_nodes):
+            if not self.alive[ch]:
+                break
             if not self.alive[i]:
                 continue
             if i == ch or i == deputy:
                 continue
 
             d_i_ch = _dist(self.positions[i], self.positions[ch])
-            tx = tx_energy(kbits, d_i_ch, self.eparams)
-            rx = rx_energy(kbits, self.eparams)
+            tx = tx_energy(packet_bits, d_i_ch, self.eparams)
+            rx = rx_energy(packet_bits, self.eparams)
 
             self._apply_energy(i, tx)
             self._apply_energy(ch, rx)
 
             total_consumed += tx + rx
+            n_member_packets_rx += 1
 
         # 2) data aggregation at CH (optional)
-        # assume CH aggregates one packet (simple abstraction)
-        da_cost = da_energy(kbits, self.eparams)
-        self._apply_energy(ch, da_cost)
-        total_consumed += da_cost
+        # aggregate all packets received by CH in this round
+        if self.alive[ch] and n_member_packets_rx > 0:
+            da_bits = packet_bits * n_member_packets_rx
+            da_cost = da_energy(da_bits, self.eparams)
+            self._apply_energy(ch, da_cost)
+            total_consumed += da_cost
 
         # 3) CH -> Deputy
-        d_ch_dep = _dist(self.positions[ch], self.positions[deputy])
-        tx_ch = tx_energy(kbits, d_ch_dep, self.eparams)
-        rx_dep = rx_energy(kbits, self.eparams)
+        if self.alive[ch] and self.alive[deputy]:
+            d_ch_dep = _dist(self.positions[ch], self.positions[deputy])
+            tx_ch = tx_energy(packet_bits, d_ch_dep, self.eparams)
+            rx_dep = rx_energy(packet_bits, self.eparams)
 
-        self._apply_energy(ch, tx_ch)
-        self._apply_energy(deputy, rx_dep)
+            self._apply_energy(ch, tx_ch)
+            self._apply_energy(deputy, rx_dep)
 
-        total_consumed += tx_ch + rx_dep
+            total_consumed += tx_ch + rx_dep
 
         # 4) Deputy -> BS
-        d_dep_bs = _dist(self.positions[deputy], self.bs)
-        tx_dep = tx_energy(kbits, d_dep_bs, self.eparams)
-        self._apply_energy(deputy, tx_dep)
-        total_consumed += tx_dep
+        if self.alive[deputy]:
+            d_dep_bs = _dist(self.positions[deputy], self.bs)
+            tx_dep = tx_energy(packet_bits, d_dep_bs, self.eparams)
+            self._apply_energy(deputy, tx_dep)
+            total_consumed += tx_dep
 
         return total_consumed
 
