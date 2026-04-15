@@ -47,18 +47,27 @@ def _pad_to_length(arr, L):
     return np.concatenate([arr, pad])
 
 
-def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
-    import os
-    import numpy as np
-    import matplotlib.pyplot as plt
+def _debug_print_agg_stats(name, agg):
+    keys = sorted(list(agg.keys()))
+    print(f"[DEBUG] {name} keys: {keys}")
+    alive_len = len(agg.get("alive_mean", []))
+    avg_energy_len = len(agg.get("avg_energy_mean", []))
+    var_energy_len = len(agg.get("var_energy_mean", []))
+    print(
+        f"[DEBUG] {name} lens -> "
+        f"alive_mean: {alive_len}, "
+        f"avg_energy_mean: {avg_energy_len}, "
+        f"var_energy_mean: {var_energy_len}"
+    )
 
+
+def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
     os.makedirs(out_dir, exist_ok=True)
 
+    _debug_print_agg_stats("Random", agg_random)
+    _debug_print_agg_stats("ECHP", agg_echp)
+
     L = int(max(agg_random["max_len"], agg_echp["max_len"]))
-    x = np.arange(1, L + 1)
-
-
-
     # Pad curves to same length L
     r_alive = _pad_to_length(agg_random["alive_mean"], L)
     e_alive = _pad_to_length(agg_echp["alive_mean"], L)
@@ -68,6 +77,7 @@ def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
 
     r_varE = _pad_to_length(agg_random["var_energy_mean"], L)
     e_varE = _pad_to_length(agg_echp["var_energy_mean"], L)
+    x = np.arange(len(r_alive))
 
     # Individual plots (mean only)
     plt.figure()
@@ -123,29 +133,48 @@ def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
     plt.tight_layout()
     plt.savefig(f"{out_dir}/var_energy_compare.png", dpi=200)
     plt.close()
-    plot_curve(
-        x,
-        agg_echp["alive_mean"][:L],
-        agg_echp["alive_std"][:L],
-        "Alive Nodes vs Rounds (ECHP-heuristic)",
-        "Round",
-        "Alive Nodes",
-        f"{out_dir}/alive_echp.png",
-    )
 
-    # Compare on one plot (mean only for clarity)
+def plot_three_way_compare(agg_random, agg_echp, agg_rl, out_dir="results/figures"):
+    os.makedirs(out_dir, exist_ok=True)
+
+    _debug_print_agg_stats("Random", agg_random)
+    _debug_print_agg_stats("ECHP", agg_echp)
+    _debug_print_agg_stats("RL", agg_rl)
+
+    L = int(max(agg_random["max_len"], agg_echp["max_len"], agg_rl["max_len"]))
+
+    r_alive = _pad_to_length(agg_random["alive_mean"], L)
+    e_alive = _pad_to_length(agg_echp["alive_mean"], L)
+    rl_alive = _pad_to_length(agg_rl["alive_mean"], L)
+
+    r_avgE = _pad_to_length(agg_random["avg_energy_mean"], L)
+    e_avgE = _pad_to_length(agg_echp["avg_energy_mean"], L)
+    rl_avgE = _pad_to_length(agg_rl["avg_energy_mean"], L)
+
+    r_varE = _pad_to_length(agg_random["var_energy_mean"], L)
+    e_varE = _pad_to_length(agg_echp["var_energy_mean"], L)
+    rl_varE = _pad_to_length(agg_rl["var_energy_mean"], L)
+
+    x = np.arange(len(r_alive))
+
+    # Alive compare
     plt.figure()
-    plt.title("Alive Nodes vs Rounds (Baselines Comparison)")
+    plt.plot(x, r_alive, label="Random")
+    plt.plot(x, e_alive, label="ECHP")
+    plt.plot(x, rl_alive, label="RL")
+    plt.title("Alive Nodes vs Rounds (Comparison)")
     plt.xlabel("Round")
     plt.ylabel("Alive Nodes")
     plt.legend()
     plt.tight_layout()
-    os.makedirs(out_dir, exist_ok=True)
     plt.savefig(f"{out_dir}/alive_compare.png", dpi=200)
     plt.close()
 
-    # Avg energy
+    # Avg energy compare
     plt.figure()
+    plt.plot(x, r_avgE, label="Random")
+    plt.plot(x, e_avgE, label="ECHP")
+    plt.plot(x, rl_avgE, label="RL")
     plt.title("Average Residual Energy vs Rounds")
     plt.xlabel("Round")
     plt.ylabel("Avg Energy (J)")
@@ -154,8 +183,11 @@ def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
     plt.savefig(f"{out_dir}/avg_energy_compare.png", dpi=200)
     plt.close()
 
-    # Variance
+    # Variance compare
     plt.figure()
+    plt.plot(x, r_varE, label="Random")
+    plt.plot(x, e_varE, label="ECHP")
+    plt.plot(x, rl_varE, label="RL")
     plt.title("Energy Variance vs Rounds")
     plt.xlabel("Round")
     plt.ylabel("Var(E)")
@@ -163,42 +195,3 @@ def plot_baselines(agg_random, agg_echp, out_dir="results/figures"):
     plt.tight_layout()
     plt.savefig(f"{out_dir}/var_energy_compare.png", dpi=200)
     plt.close()
-
-    def plot_three_way(agg_random, agg_echp, agg_rl, out_dir="results/figures"):
-        import os
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-        os.makedirs(out_dir, exist_ok=True)
-        L = int(max(agg_random["max_len"], agg_echp["max_len"], agg_rl["max_len"]))
-        x = np.arange(1, L + 1)
-
-        # Alive nodes
-        plt.figure()
-        plt.title("Alive Nodes vs Rounds")
-        plt.xlabel("Round")
-        plt.ylabel("Alive Nodes")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"{out_dir}/alive_three_way.png", dpi=200)
-        plt.close()
-
-        # Avg energy
-        plt.figure()
-        plt.title("Average Residual Energy vs Rounds")
-        plt.xlabel("Round")
-        plt.ylabel("Avg Energy (J)")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"{out_dir}/avg_energy_three_way.png", dpi=200)
-        plt.close()
-
-        # Variance
-        plt.figure()
-        plt.title("Energy Variance vs Rounds")
-        plt.xlabel("Round")
-        plt.ylabel("Var(E)")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"{out_dir}/var_energy_three_way.png", dpi=200)
-        plt.close()

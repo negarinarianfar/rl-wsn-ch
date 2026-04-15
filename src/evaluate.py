@@ -7,6 +7,7 @@ import numpy as np
 from .baselines import run_baseline_random, run_baseline_echp, rollout
 from .energy_model import EnergyParams
 from .metrics import aggregate_histories
+from .plots import plot_three_way_compare
 from .rl_agent import QLearningAgent, QConfig
 from .train import load_agent
 from .wsn_env import WSNEnv, EnvConfig
@@ -71,6 +72,7 @@ def main():
 
     seeds = list(range(1, 11))
     agg_random, agg_echp, agg_rl = evaluate_all(env, agent, seeds)
+    plot_three_way_compare(agg_random, agg_echp, agg_rl, out_dir="results/figures")
 
     print("Random:", agg_random)
     print("ECHP:", agg_echp)
