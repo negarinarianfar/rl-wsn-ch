@@ -221,3 +221,36 @@ class WSNEnv:
             "LND": self.last_dead_round,
         }
         return next_state, reward, done, info
+
+    def step_multi_role(self, main_ch, deputy_ch):
+        reward = self.execute_round(main_ch, deputy_ch)
+
+        self.round_idx += 1
+
+        alive = int((self.energy > 0).sum())
+
+        if self.first_dead_round is None and alive < self.cfg.n_nodes:
+            self.first_dead_round = self.round_idx
+
+        if self.half_dead_round is None and alive <= self.cfg.n_nodes // 2:
+            self.half_dead_round = self.round_idx
+
+        if alive == 0 and getattr(self, "last_dead_round", None) is None:
+            self.last_dead_round = self.round_idx
+
+        done = (
+                self.round_idx >= self.cfg.max_rounds
+                or alive <= int(self.cfg.n_nodes * (1 - self.cfg.dead_ratio_terminate))
+        )
+
+        state = self._get_state() if hasattr(self, "_get_state") else None
+
+        info = {
+            "round": self.round_idx,
+            "alive": alive,
+            "FND": self.first_dead_round,
+            "HND": self.half_dead_round,
+            "LND": getattr(self, "last_dead_round", None),
+        }
+
+        return state, reward, done, info
