@@ -3,8 +3,7 @@ import numpy as np
 from src.config import EnvConfig
 from src.energy_model import EnergyParams
 from src.wsn_env import WSNEnv
-from src.baselines import random_multi_role, leach_baseline, heed_baseline
-
+from src.baselines import random_multi_role, leach_baseline, heed_baseline, rl_multi_role_policy
 
 def run_one(seed=1, policy_fn=None):
     cfg = EnvConfig()
@@ -17,12 +16,23 @@ def run_one(seed=1, policy_fn=None):
     info = {}
 
     while not done:
-        main_ch, deputy_ch = policy_fn(env)
+        action = policy_fn(env)
+
+        if action is None:
+            break
+
+        if len(action) == 2:
+            main_ch, deputy_ch = action
+            relay_ch = None
+        elif len(action) == 3:
+            main_ch, deputy_ch, relay_ch = action
+        else:
+            raise ValueError(f"Invalid action: {action}")
 
         if main_ch is None or deputy_ch is None:
             break
 
-        _, reward, done, info = env.step_multi_role(main_ch, deputy_ch)
+        _, reward, done, info = env.step_multi_role(main_ch, deputy_ch, relay_ch)
 
     return info
 
@@ -57,6 +67,7 @@ if __name__ == "__main__":
         "Random Multi-Role": random_multi_role,
         "LEACH-MR": leach_baseline,
         "HEED-MR": heed_baseline,
+        "RL-MR": rl_multi_role_policy
     }
 
     for name, policy_fn in methods.items():

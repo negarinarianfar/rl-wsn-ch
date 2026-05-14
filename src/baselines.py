@@ -202,3 +202,23 @@ def heed_baseline(env, c_prob: float = 0.05):
     deputy = max(others, key=lambda n: env.energy[n])
 
     return main_ch, int(deputy)
+
+from src.rl_multirole_agent import MultiRoleQAgent
+
+
+_rl_agent_cache = None
+
+
+def rl_multi_role_policy(env):
+    global _rl_agent_cache
+
+    if _rl_agent_cache is None:
+        _rl_agent_cache = MultiRoleQAgent()
+        _rl_agent_cache.load("results/tables/rl_mr_qtable.pkl")
+
+    state, action_idx, pair = _rl_agent_cache.select_action(env, training=False)
+
+    if pair is None:
+        return None, None
+
+    return pair

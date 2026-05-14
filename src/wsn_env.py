@@ -222,20 +222,55 @@ class WSNEnv:
         }
         return next_state, reward, done, info
 
-    def step_multi_role(self, main_ch, deputy_ch):
-        reward = self.execute_round(main_ch, deputy_ch)
+    def step_multi_role(self, main_ch, deputy_ch, relay_ch=None):
+        energy_before = float(np.sum(self.energy))
+
+        base_reward = self.execute_round(main_ch, deputy_ch)
+
+        energy_after = float(np.sum(self.energy))
+        energy_consumed = max(0.0, energy_before - energy_after)
+        relay_bonus = 0.0
+        if relay_ch is not None and self.energy[relay_ch] > 0:
+            relay_bonus = 0.2 * float(self.energy[relay_ch])
 
         self.round_idx += 1
-
         alive = int((self.energy > 0).sum())
+
+        reward = 0.0
+
+        # alive ratio
+        reward += 5.0 * (alive / self.cfg.n_nodes)
+
+        # residual energy
+        reward += 3.0 * float(np.mean(self.energy))
+
+        # penalize energy usage
+        reward -= 8.0 * energy_consumed
+
+        # cluster balance
+        std_energy = float(np.std(self.energy))
+        reward -= 2.0 * std_energy
+
+        # relay reward
+        if relay_ch is not None and self.energy[relay_ch] > 0:
+            reward += 1.0
+
+        # death penalty
+        if alive < self.cfg.n_nodes:
+            reward -= 5.0
 
         if self.first_dead_round is None and alive < self.cfg.n_nodes:
             self.first_dead_round = self.round_idx
+            reward -= 5.0
 
         if self.half_dead_round is None and alive <= self.cfg.n_nodes // 2:
             self.half_dead_round = self.round_idx
+            reward -= 10.0
 
-        if alive == 0 and getattr(self, "last_dead_round", None) is None:
+        if not hasattr(self, "last_dead_round"):
+            self.last_dead_round = None
+
+        if self.last_dead_round is None and alive == 0:
             self.last_dead_round = self.round_idx
 
         done = (
@@ -250,7 +285,9 @@ class WSNEnv:
             "alive": alive,
             "FND": self.first_dead_round,
             "HND": self.half_dead_round,
-            "LND": getattr(self, "last_dead_round", None),
+            "LND": self.last_dead_round,
+            "energy_consumed": energy_consumed,
+            "base_reward": base_reward,
         }
 
         return state, reward, done, info
